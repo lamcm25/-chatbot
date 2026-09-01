@@ -1,50 +1,258 @@
-async function sendQueryToBackend(studentQuery) {
-  const trimmedQuery = studentQuery.trim();
-  if (!trimmedQuery) return;
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小學數學：余主任</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #1e222b;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app-container {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+      height: 520px;
+    }
+    .left-panel, .right-panel {
+      background-color: #2b313e;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .panel-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    .avatar-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #1e222b;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .avatar-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .btn-voice {
+      width: 100%;
+      padding: 12px;
+      background-color: #34a853;
+      color: #ffffff;
+      border: none;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .btn-voice:hover {
+      background-color: #2d9247;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      background-color: #1e222b;
+      border: 1px solid #3c4250;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 14px;
+    }
+    .input-row button {
+      padding: 10px 20px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .input-row button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+    .status-box {
+      font-size: 13px;
+      color: #a0a6b5;
+      min-height: 20px;
+    }
+    .history-box {
+      flex: 1;
+      background-color: #1e222b;
+      border-radius: 8px;
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 14px;
+      color: #a0a6b5;
+      line-height: 1.6;
+    }
+    .chat-item {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2b313e;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
 
-  statusEl.innerText = "余主任思考緊，準備回答你...";
+  <div class="app-container">
+    <!-- Left Column: Controls & AI Avatar -->
+    <div class="left-panel">
+      <div class="panel-title">小學數學：余主任</div>
+      <div class="avatar-container">
+        <img src="avatar.png" alt="余主任" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x300?text=Avatar';">
+      </div>
+      <button class="btn-voice" onclick="startVoiceInput()">🎤 按此語音發問</button>
+      <div class="input-row">
+        <input type="text" id="text-input" placeholder="向余主任提問..." onkeydown="if(event.key==='Enter') handleSend()">
+        <button class="send" onclick="handleSend()">傳送</button>
+      </div>
+      <div id="status" class="status-box">余主任沒有回應。</div>
+    </div>
 
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
+    <!-- Right Column: Conversation Log -->
+    <div class="right-panel">
+      <div class="panel-title">課堂探究紀錄</div>
+      <div id="chat-history" class="history-box">與余主任的對話紀錄會顯示在此處。</div>
+    </div>
+  </div>
 
-  chatHistory.push({ role: "user", content: trimmedQuery });
+  <script>
+    const statusEl = document.getElementById('status');
+    const historyEl = document.getElementById('chat-history');
+    let chatHistory = [];
+    let currentAudio = null;
 
-  try {
-    const response = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      statusEl.innerText = `伺服器錯誤 (${response.status}): ${data.detail || data.error || '未知錯誤'}`;
-      chatHistory.pop();
-      return;
+    function handleSend() {
+      const input = document.getElementById('text-input');
+      const query = input.value;
+      if (!query.trim()) return;
+      input.value = '';
+      sendQueryToBackend(query);
     }
 
-    const replyText = data.text || "余主任沒有回應。";
-    statusEl.innerText = replyText;
-
-    if (data.text && !data.text.includes("連線失敗")) {
-      chatHistory.push({ role: "assistant", content: replyText });
-      addQuestionToHistory(trimmedQuery, replyText);
-    } else {
-      chatHistory.pop();
+    function addQuestionToHistory(q, a) {
+      if (historyEl.innerHTML.includes("與余主任的對話紀錄會顯示在此處。")) {
+        historyEl.innerHTML = "";
+      }
+      const item = document.createElement('div');
+      item.className = 'chat-item';
+      item.innerHTML = `<strong>問：</strong>${q}<br><strong>答：</strong>${a}`;
+      historyEl.appendChild(item);
+      historyEl.scrollTop = historyEl.scrollHeight;
     }
 
-    if (data.audio_url) {
-      currentAudio = new Audio(data.audio_url);
-      currentAudio.play().catch(e => {
-        console.log("Autoplay blocked:", e);
-      });
+    async function sendQueryToBackend(studentQuery) {
+      const trimmedQuery = studentQuery.trim();
+      if (!trimmedQuery) return;
+
+      const sendBtn = document.querySelector('.send');
+      const inputField = document.getElementById('text-input');
+
+      if (sendBtn) sendBtn.disabled = true;
+      if (inputField) inputField.disabled = true;
+
+      statusEl.innerText = "余主任思考緊，準備回答你...";
+
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+
+      chatHistory.push({ role: "user", content: trimmedQuery });
+
+      try {
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: chatHistory })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          statusEl.innerText = `伺服器錯誤 (${response.status}): ${data.detail || data.error || '未知錯誤'}`;
+          chatHistory.pop();
+          return;
+        }
+
+        const replyText = data.text || "余主任沒有回應。";
+        statusEl.innerText = replyText;
+
+        if (data.text && !data.text.includes("連線失敗") && !data.text.includes("錯誤")) {
+          chatHistory.push({ role: "assistant", content: replyText });
+          addQuestionToHistory(trimmedQuery, replyText);
+        } else {
+          chatHistory.pop();
+        }
+
+        if (data.audio_url) {
+          currentAudio = new Audio(data.audio_url);
+          currentAudio.play().catch(e => {
+            console.warn("Autoplay blocked:", e);
+          });
+        }
+      } catch (error) {
+        console.error("Fetch error:", error);
+        statusEl.innerText = "網絡請求失敗：" + error.message;
+        chatHistory.pop();
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+        if (inputField) {
+          inputField.disabled = false;
+          inputField.focus();
+        }
+      }
     }
-  } catch (error) {
-    console.error("Fetch error:", error);
-    statusEl.innerText = "網絡請求失敗：" + error.message;
-    chatHistory.pop();
-  }
-}
+
+    function startVoiceInput() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('你的瀏覽器不支援語音辨識功能。');
+        return;
+      }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'zh-HK';
+      statusEl.innerText = "正在聆聽...";
+      recognition.start();
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('text-input').value = transcript;
+        sendQueryToBackend(transcript);
+      };
+
+      recognition.onerror = () => {
+        statusEl.innerText = "語音辨識失敗，請重試。";
+      };
+    }
+  </script>
+</body>
+</html>
