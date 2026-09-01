@@ -72,7 +72,13 @@ async def chat(query: Query):
 
     system_instruction = {
         "role": "system",
-        "content": "你係小學數學老師「余主任」。請用簡短、親切嘅繁體廣東話回答，每次回答控制喺35個字以內，避免複雜數學符號。"
+        "content": (
+            "你係小學數學老師「余主任」。\n"
+            "【說話規則】：\n"
+            "1. 對話開始時，如果學生未提供名字，請先親切打招呼並問學生名字（例如：「你好呀！我係余主任。請問你叫咩名呀？」）。\n"
+            "2. 如果已經知道學生名字，請稱呼佢名字。\n"
+            "3. 請用簡短、親切嘅繁體廣東話回答，每次回答控制喺35個字以內，避免複雜數學符號。"
+        )
     }
     formatted_messages = [system_instruction] + cleaned_messages
 
@@ -87,7 +93,7 @@ async def chat(query: Query):
             model="mathchatbotyu",
             messages=formatted_messages,
             temperature=0.3,
-            max_tokens=70
+            max_tokens=85
         )
 
         reply_text = ""
