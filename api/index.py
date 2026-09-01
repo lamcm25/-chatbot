@@ -83,8 +83,8 @@ async def ask(query: Query):
             if cantonese_voice:
                 payload["voice_id"] = cantonese_voice
 
-            # 增加 Timeout 至 12.0 秒
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            # 增加 Timeout 至 22.0 秒
+            async with httpx.AsyncClient(timeout=22.0) as client:
                 res = await client.post(tts_url, json=payload, headers=headers)
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
