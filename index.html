@@ -234,7 +234,7 @@
       chatHistory.push({ role: "user", content: trimmedQuery });
 
       try {
-        // 1. Fetch text answer
+        // Step 1: Fetch text answer (Held in memory, not shown yet)
         const chatRes = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -250,17 +250,15 @@
         }
 
         const replyText = chatData.text;
-        statusEl.innerText = replyText;
 
-        if (!replyText.includes("連線失敗") && !replyText.includes("錯誤")) {
-          chatHistory.push({ role: "assistant", content: replyText });
-          addQuestionToHistory(trimmedQuery, replyText);
-        } else {
+        if (replyText.includes("連線失敗") || replyText.includes("錯誤")) {
+          statusEl.innerText = replyText;
           chatHistory.pop();
           return;
         }
 
-        // 2. Fetch Cantonese voice audio cleanly
+        // Step 2: Fetch audio while displaying "Generating voice..." status
+        statusEl.innerText = "余主任準備緊回答同語音...";
         showAudioBadge("廣東話語音生成中...");
 
         const ttsRes = await fetch('/api/tts', {
@@ -271,19 +269,32 @@
 
         const ttsData = await ttsRes.json();
 
+        // Step 3: Synchronized Reveal — Play sound and render text at the EXACT same instant
+        chatHistory.push({ role: "assistant", content: replyText });
+
         if (ttsData.audio_url) {
-          showAudioBadge("播放語音中");
           currentAudio = new Audio(ttsData.audio_url);
           
+          currentAudio.onplay = () => {
+            statusEl.innerText = replyText;
+            addQuestionToHistory(trimmedQuery, replyText);
+            showAudioBadge("播放語音中");
+          };
+
           currentAudio.onended = () => {
             clearAudioBadge();
           };
 
           currentAudio.play().catch(e => {
             console.warn("Autoplay blocked:", e);
+            statusEl.innerText = replyText;
+            addQuestionToHistory(trimmedQuery, replyText);
             clearAudioBadge();
           });
         } else {
+          // If speech synthesis fails, reveal text immediately
+          statusEl.innerText = replyText;
+          addQuestionToHistory(trimmedQuery, replyText);
           clearAudioBadge();
         }
 
