@@ -31,7 +31,7 @@ async def ask(query: Query):
     cantonese_voice = os.environ.get("CANTONESE_AI_VOICE", "").strip()
 
     if not poe_key:
-        return {"text": "錯誤：Vercel 未設定 POE_API_KEY 環境變數。", "audio_url": None}
+        return {"text": "錯誤：未設定 POE_API_KEY 環境變數。", "audio_url": None}
 
     cleaned_messages = [
         {"role": msg.get("role", "user"), "content": str(msg.get("content", "")).strip()}
@@ -68,8 +68,9 @@ async def ask(query: Query):
         return {"text": f"Poe 連線失敗：{str(e)}", "audio_url": None}
 
     if not reply_text:
-        reply_text = "余主任暫時未有回應，請確認 Poe Bot（mathchatbotyu）名稱及點數餘額。"
+        reply_text = "余主任暫時未有回應，請確認 Poe Bot 名稱及點數餘額。"
 
+    # 生成廣東話 TTS 語音
     if cantonese_key:
         try:
             tts_url = "https://cantonese.ai/api/tts"
@@ -82,12 +83,17 @@ async def ask(query: Query):
             if cantonese_voice:
                 payload["voice_id"] = cantonese_voice
 
-            async with httpx.AsyncClient(timeout=4.0) as client:
+            # 增加 Timeout 至 12.0 秒
+            async with httpx.AsyncClient(timeout=12.0) as client:
                 res = await client.post(tts_url, json=payload, headers=headers)
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
                     audio_url = f"data:audio/mp3;base64,{audio_b64}"
+                else:
+                    logger.error(f"[TTS Failed]: Status {res.status_code}, Response: {res.text}")
         except Exception as tts_err:
-            logger.error(f"[TTS Error]: {str(tts_err)}")
+            logger.error(f"[TTS Exception]: {str(tts_err)}")
+    else:
+        logger.warning("[TTS Warning]: CANTONESE_AI_API_KEY 未找到，跳過語音生成。")
 
     return {"text": reply_text, "audio_url": audio_url}
