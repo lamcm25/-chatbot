@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>跨時空訪問：1960年代工廠妹阿蓮</title>
+  <title>余主任數學教室</title>
   <style>
     body { 
-      background: url('factory.png') no-repeat center center fixed; 
+      /* Updated background image reference */
+      background: url('background.png') no-repeat center center fixed; 
       background-size: cover; 
       color: white; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
@@ -142,29 +143,28 @@
 <body>
 
   <div class="main-container">
-    <!-- Left Panel: Avatar & Interactive Box -->
     <div class="card left-panel">
-      <h2>訪問對象：工廠妹阿蓮 (10歲)</h2>
+      <h2>小學數學：余主任</h2>
       
       <div class="avatar-container">
-        <img id="avatar-img" src="main character.png" alt="阿蓮">
+        <!-- Updated avatar image reference -->
+        <img id="avatar-img" src="avatar.png" alt="余主任">
       </div>
 
       <button class="btn" onclick="recordAndAsk()">🎤 按此語音發問</button>
 
       <div class="input-box">
-        <input type="text" id="text-input" placeholder="參考工作紙向阿蓮提問..." onkeypress="handleKeyPress(event)">
+        <input type="text" id="text-input" placeholder="向余主任提問..." onkeypress="handleKeyPress(event)">
         <button class="send" onclick="sendTextQuery()">傳送</button>
       </div>
 
-      <p id="status">你好！我係阿蓮。你想了解我屋企、工廠定係平日生活？問我啦！</p>
+      <p id="status">你好呀！我係余主任。同學，你叫咩名呀？</p>
     </div>
 
-    <!-- Right Panel: Questions History for Worksheet Recording -->
     <div class="card right-panel">
-      <h3>探究訪問紀錄 (填寫工作紙用)</h3>
+      <h3>課堂探究紀錄</h3>
       <div id="history-list" class="history-list">
-        <p class="empty-history" id="empty-msg">請根據工作紙上的主題向阿蓮發問，收集到的資料會顯示在此處。</p>
+        <p class="empty-history" id="empty-msg">與余主任的對話紀錄會顯示在此處。</p>
       </div>
     </div>
   </div>
@@ -174,27 +174,37 @@
     const historyList = document.getElementById('history-list');
     const emptyMsg = document.getElementById('empty-msg');
     let currentAudio = null;
+    
+    // Store conversation history so the backend remembers the context
+    let chatHistory = [];
 
     async function sendQueryToBackend(studentQuery) {
       if (!studentQuery.trim()) return;
 
-      statusEl.innerText = "阿蓮思考緊，準備回答你...";
+      statusEl.innerText = "余主任思考緊，準備回答你...";
 
       if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
       }
 
+      // Add student's message to history
+      chatHistory.push({ role: "user", content: studentQuery });
+
       try {
-        const response = await fetch('https://hk-primary-tutor-backend.onrender.com/api/ask', {
+        // Ensure this URL matches your deployed backend (e.g., your Render domain if deployed)
+        const response = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: studentQuery })
+          body: JSON.stringify({ messages: chatHistory })
         });
 
         const data = await response.json();
         const replyText = data.text || "";
         statusEl.innerText = replyText;
+
+        // Add assistant's response to history
+        chatHistory.push({ role: "assistant", content: replyText });
 
         addQuestionToHistory(studentQuery, replyText);
 
@@ -202,7 +212,7 @@
           currentAudio = new Audio(data.audio_url);
           currentAudio.play().catch(e => {
             console.log("Autoplay blocked:", e);
-            statusEl.innerText = replyText + "\n(🔊 請點擊畫面收聽阿蓮聲音)";
+            statusEl.innerText = replyText + "\n(🔊 請點擊畫面收聽余主任聲音)";
             document.body.onclick = () => {
               if (currentAudio) currentAudio.play();
               document.body.onclick = null;
@@ -212,6 +222,8 @@
       } catch (error) {
         console.error("Fetch error:", error);
         statusEl.innerText = "連線失敗，請稍後再試。";
+        // Remove the failed message so they can retry
+        chatHistory.pop();
       }
     }
 
@@ -223,11 +235,11 @@
 
       const qEl = document.createElement('div');
       qEl.className = 'history-q';
-      qEl.innerText = "❓ 訪問問題：" + question;
+      qEl.innerText = "🧑‍🎓 你：" + question;
 
       const aEl = document.createElement('div');
       aEl.className = 'history-a';
-      aEl.innerText = "💬 阿蓮：" + answer;
+      aEl.innerText = "👨‍🏫 余主任：" + answer;
 
       item.appendChild(qEl);
       item.appendChild(aEl);
@@ -245,7 +257,7 @@
       recognition.lang = 'zh-HK';
       recognition.start();
 
-      statusEl.innerText = "正在聆聽你的訪問問題...";
+      statusEl.innerText = "正在聆聽你的問題...";
 
       recognition.onresult = (event) => {
         sendQueryToBackend(event.results[0][0].transcript);
