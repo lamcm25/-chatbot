@@ -4,6 +4,7 @@ import httpx
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 from typing import List, Dict
@@ -33,6 +34,25 @@ poe_client = AsyncOpenAI(
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
+# Serve index.html at root
+@app.get("/")
+async def serve_home():
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    elif os.path.exists("../index.html"):
+        return FileResponse("../index.html")
+    return HTMLResponse("<h1>index.html not found</h1>", status_code=404)
+
+# Serve static files (avatar.png, background.png)
+@app.get("/{file_name}")
+async def serve_static(file_name: str):
+    if os.path.exists(file_name):
+        return FileResponse(file_name)
+    elif os.path.exists(f"../{file_name}"):
+        return FileResponse(f"../{file_name}")
+    return {"detail": "Not Found"}
+
+# API Endpoint for Chatbot
 @app.post("/api/ask")
 async def ask(query: Query):
     if not POE_KEY:
