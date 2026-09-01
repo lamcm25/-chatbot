@@ -26,7 +26,7 @@
       gap: 20px;
       width: 100%;
       max-width: 960px;
-      height: 520px;
+      height: 540px;
     }
     .left-panel, .right-panel {
       background-color: rgba(43, 49, 62, 0.92);
@@ -101,11 +101,39 @@
       background-color: #555;
       cursor: not-allowed;
     }
-    .status-box {
-      font-size: 13px;
-      color: #a0a6b5;
-      min-height: 20px;
+    .status-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 40px;
     }
+    .status-box {
+      font-size: 14px;
+      color: #e0e4ec;
+      line-height: 1.4;
+    }
+    
+    /* Animated Voice Badge */
+    .audio-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      font-size: 12px;
+      background: rgba(66, 133, 244, 0.2);
+      color: #8ab4f8;
+      border: 1px solid rgba(66, 133, 244, 0.4);
+      padding: 4px 10px;
+      border-radius: 12px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1.0; }
+      100% { opacity: 0.6; }
+    }
+
     .history-box {
       flex: 1;
       background-color: #1a1e26;
@@ -137,7 +165,11 @@
         <input type="text" id="text-input" placeholder="向余主任提問..." onkeydown="if(event.key==='Enter') handleSend()">
         <button class="send" onclick="handleSend()">傳送</button>
       </div>
-      <div id="status" class="status-box">余主任準備好回答問題。</div>
+      
+      <div class="status-container">
+        <div id="status" class="status-box">余主任準備好回答問題。</div>
+        <div id="audio-badge-container"></div>
+      </div>
     </div>
 
     <div class="right-panel">
@@ -147,10 +179,18 @@
   </div>
 
   <script>
-    // Global variable initializations
     let chatHistory = [];
     let currentAudio = null;
     const statusEl = document.getElementById('status');
+    const badgeContainer = document.getElementById('audio-badge-container');
+
+    function showAudioBadge(text) {
+      badgeContainer.innerHTML = `<span class="audio-badge">🔊 ${text}</span>`;
+    }
+
+    function clearAudioBadge() {
+      badgeContainer.innerHTML = '';
+    }
 
     function handleSend() {
       const input = document.getElementById('text-input');
@@ -184,6 +224,7 @@
       if (inputField) inputField.disabled = true;
 
       statusEl.innerText = "余主任思考緊，準備回答你...";
+      clearAudioBadge();
 
       if (currentAudio) {
         currentAudio.pause();
@@ -193,7 +234,7 @@
       chatHistory.push({ role: "user", content: trimmedQuery });
 
       try {
-        // 1. Fetch text answer from /api/chat
+        // 1. Fetch text answer
         const chatRes = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -219,8 +260,8 @@
           return;
         }
 
-        // 2. Fetch Cantonese speech audio from /api/tts
-        statusEl.innerText = replyText + "\n\n(🔊 語音準備中...)";
+        // 2. Fetch Cantonese voice audio cleanly
+        showAudioBadge("廣東話語音生成中...");
 
         const ttsRes = await fetch('/api/tts', {
           method: 'POST',
@@ -229,18 +270,27 @@
         });
 
         const ttsData = await ttsRes.json();
-        statusEl.innerText = replyText;
 
         if (ttsData.audio_url) {
+          showAudioBadge("播放語音中");
           currentAudio = new Audio(ttsData.audio_url);
+          
+          currentAudio.onended = () => {
+            clearAudioBadge();
+          };
+
           currentAudio.play().catch(e => {
             console.warn("Autoplay blocked:", e);
+            clearAudioBadge();
           });
+        } else {
+          clearAudioBadge();
         }
 
       } catch (error) {
         console.error("Fetch error:", error);
         statusEl.innerText = "網絡請求失敗：" + error.message;
+        clearAudioBadge();
         chatHistory.pop();
       } finally {
         if (sendBtn) sendBtn.disabled = false;
