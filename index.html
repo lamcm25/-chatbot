@@ -12,7 +12,8 @@
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #1e222b;
+      background: #1e222b url('background.png') no-repeat center center fixed;
+      background-size: cover;
       color: #ffffff;
       display: flex;
       justify-content: center;
@@ -28,12 +29,13 @@
       height: 520px;
     }
     .left-panel, .right-panel {
-      background-color: #2b313e;
+      background-color: rgba(43, 49, 62, 0.92);
       border-radius: 12px;
       padding: 24px;
       display: flex;
       flex-direction: column;
       flex: 1;
+      backdrop-filter: blur(8px);
     }
     .panel-title {
       font-size: 18px;
@@ -45,15 +47,17 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #1e222b;
+      background-color: #1a1e26;
       border-radius: 12px;
       overflow: hidden;
       margin-bottom: 16px;
+      padding: 10px;
     }
     .avatar-container img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
+      object-position: top center;
     }
     .btn-voice {
       width: 100%;
@@ -104,7 +108,7 @@
     }
     .history-box {
       flex: 1;
-      background-color: #1e222b;
+      background-color: #1a1e26;
       border-radius: 8px;
       padding: 16px;
       overflow-y: auto;
@@ -123,11 +127,10 @@
 <body>
 
   <div class="app-container">
-    <!-- Left Column: Controls & AI Avatar -->
     <div class="left-panel">
       <div class="panel-title">小學數學：余主任</div>
       <div class="avatar-container">
-        <img src="avatar.png" alt="余主任" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x300?text=Avatar';">
+        <img src="avatar.png" alt="余主任">
       </div>
       <button class="btn-voice" onclick="startVoiceInput()">🎤 按此語音發問</button>
       <div class="input-row">
@@ -137,7 +140,6 @@
       <div id="status" class="status-box">余主任沒有回應。</div>
     </div>
 
-    <!-- Right Column: Conversation Log -->
     <div class="right-panel">
       <div class="panel-title">課堂探究紀錄</div>
       <div id="chat-history" class="history-box">與余主任的對話紀錄會顯示在此處。</div>
