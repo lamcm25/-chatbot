@@ -2,8 +2,9 @@ import base64
 import os
 import httpx
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 from typing import List, Dict
@@ -25,7 +26,6 @@ POE_KEY = os.environ.get("POE_API_KEY")
 CANTONESE_AI_API_KEY = os.environ.get("CANTONESE_AI_API_KEY")
 CANTONESE_AI_VOICE = os.environ.get("CANTONESE_AI_VOICE")
 
-# Poe client setup
 poe_client = AsyncOpenAI(
     api_key=POE_KEY if POE_KEY else "dummy_key", 
     base_url="https://api.poe.com/v1"
@@ -34,16 +34,26 @@ poe_client = AsyncOpenAI(
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
+# Serve homepage
+@app.get("/")
+async def serve_homepage():
+    return FileResponse("index.html")
+
+# Serve images and static assets
+@app.get("/{file_name}")
+async def serve_static(file_name: str):
+    if os.path.exists(file_name):
+        return FileResponse(file_name)
+    return {"detail": "Not Found"}
+
 @app.post("/api/ask")
 async def ask(query: Query):
     if not POE_KEY:
-        logger.error("POE_API_KEY is not set in environment variables.")
         return {"text": "系統設定錯誤：未設定 POE_API_KEY。", "audio_url": None}
 
     audio_url = None
 
     try:
-        # Call Poe Bot API with correct bot handle
         response = await poe_client.chat.completions.create(
             model="mathchatbotyu",
             messages=query.messages,
@@ -52,7 +62,6 @@ async def ask(query: Query):
         )
         reply_text = response.choices[0].message.content
 
-        # Convert reply to speech using Cantonese.ai
         if CANTONESE_AI_API_KEY:
             tts_url = "https://cantonese.ai/api/tts"
             headers = {
@@ -72,8 +81,6 @@ async def ask(query: Query):
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
                     audio_url = f"data:audio/mp3;base64,{audio_b64}"
-                else:
-                    logger.error(f"[Cantonese.ai Error] Status: {res.status_code}, Body: {res.text}")
 
         return {"text": reply_text, "audio_url": audio_url}
 
