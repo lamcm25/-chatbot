@@ -1,20 +1,15 @@
 import base64
 import os
 import logging
-from pathlib import Path
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 from typing import List, Dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Resolve project root directory absolute path
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI()
 
@@ -29,23 +24,10 @@ app.add_middleware(
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
-# Serve index.html at root "/"
-@app.get("/")
-async def serve_home():
-    index_path = BASE_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return HTMLResponse("<h1>index.html not found</h1>", status_code=404)
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
 
-# Serve static files (avatar.png, background.png)
-@app.get("/{file_name}")
-async def serve_static(file_name: str):
-    file_path = BASE_DIR / file_name
-    if file_path.exists() and file_path.is_file():
-        return FileResponse(file_path)
-    return {"detail": "Not Found"}
-
-# API Endpoint
 @app.post("/api/ask")
 async def ask(query: Query):
     poe_key = os.environ.get("POE_API_KEY", "").strip()
