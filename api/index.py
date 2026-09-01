@@ -1,5 +1,6 @@
 import base64
 import os
+import re
 import logging
 import httpx
 from fastapi import FastAPI
@@ -27,7 +28,32 @@ class Query(BaseModel):
 class TTSRequest(BaseModel):
     text: str
 
-# Endpoint 1: Get text answer from Poe API (~2-3s)
+def prepare_tts_text(text: str) -> str:
+    """Cleans LaTeX/math formatting and safely truncates text to ensure fast TTS generation."""
+    # 1. Remove LaTeX brackets, slashes, and math symbols
+    cleaned = re.sub(r'\\[\(\)\[\]]', '', text)
+    cleaned = re.sub(r'[\$\\]', '', cleaned)
+    
+    # 2. Convert digits to Cantonese characters
+    num_map = {
+        '90': '九十', '180': '一百八十', '360': '三百六十',
+        '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
+        '5': '五', '6': '六', '7': '七', '8': '八', '9': '九'
+    }
+    for k, v in num_map.items():
+        cleaned = cleaned.replace(k, v)
+
+    # 3. Truncate TTS speech to first sentence / max 45 characters so sound loads under 3s
+    if len(cleaned) > 45:
+        match = re.search(r'^.{15,45}[！!。？?]', cleaned)
+        if match:
+            cleaned = match.group(0)
+        else:
+            cleaned = cleaned[:45]
+
+    return cleaned.strip()
+
+
 @app.post("/api/chat")
 async def chat(query: Query):
     poe_key = os.environ.get("POE_API_KEY", "").strip()
@@ -44,18 +70,24 @@ async def chat(query: Query):
     if not cleaned_messages:
         return {"text": "請輸入提問內容。"}
 
+    system_instruction = {
+        "role": "system",
+        "content": "你係小學數學老師「余主任」。請用簡短、親切嘅繁體廣東話回答，每次回答控制喺35個字以內，避免複雜數學符號。"
+    }
+    formatted_messages = [system_instruction] + cleaned_messages
+
     try:
         poe_client = AsyncOpenAI(
             api_key=poe_key,
             base_url="https://api.poe.com/v1",
-            timeout=8.0
+            timeout=6.0
         )
 
         response = await poe_client.chat.completions.create(
             model="mathchatbotyu",
-            messages=cleaned_messages,
+            messages=formatted_messages,
             temperature=0.3,
-            max_tokens=300
+            max_tokens=70
         )
 
         reply_text = ""
@@ -73,7 +105,6 @@ async def chat(query: Query):
         return {"text": f"Poe 連線失敗：{str(e)}"}
 
 
-# Endpoint 2: Convert full text to Cantonese voice (~5-8s)
 @app.post("/api/tts")
 async def generate_tts(req: TTSRequest):
     cantonese_key = os.environ.get("CANTONESE_AI_API_KEY", "").strip()
@@ -82,21 +113,20 @@ async def generate_tts(req: TTSRequest):
     if not cantonese_key or not req.text:
         return {"audio_url": None}
 
-    # Strip math LaTeX formatting symbols (e.g. \(...\) ) for clean reading
-    clean_text = req.text.replace("\\(", "").replace("\\)", "").replace("\\[", "").replace("\\]", "")
+    tts_text = prepare_tts_text(req.text)
 
     try:
         tts_url = "https://cantonese.ai/api/tts"
         headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
         payload = {
             "api_key": cantonese_key,
-            "text": clean_text,
+            "text": tts_text,
             "output_extension": "mp3",
         }
         if cantonese_voice:
             payload["voice_id"] = cantonese_voice
 
-        async with httpx.AsyncClient(timeout=9.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.post(tts_url, json=payload, headers=headers)
             if res.status_code == 200:
                 audio_b64 = base64.b64encode(res.content).decode("utf-8")
