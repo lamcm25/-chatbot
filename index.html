@@ -193,7 +193,7 @@
 
       try {
         // Ensure this URL matches your deployed backend (e.g., your Render domain if deployed)
-        const response = await fetch('/api/ask', {
+        const response = await fetch('https://your-app-name.onrender.com/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: chatHistory })
