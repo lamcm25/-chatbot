@@ -1,17 +1,7 @@
 {
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "index.html",
-      "maxDuration": 15
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/(.*)",
       "destination": "/api/index.py"
     }
   ]
