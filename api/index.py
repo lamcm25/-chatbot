@@ -1,15 +1,20 @@
 import base64
 import os
-import httpx
 import logging
+from pathlib import Path
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 from typing import List, Dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Resolve project root directory absolute path
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI()
 
@@ -24,6 +29,23 @@ app.add_middleware(
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
+# Serve index.html at root "/"
+@app.get("/")
+async def serve_home():
+    index_path = BASE_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return HTMLResponse("<h1>index.html not found</h1>", status_code=404)
+
+# Serve static files (avatar.png, background.png)
+@app.get("/{file_name}")
+async def serve_static(file_name: str):
+    file_path = BASE_DIR / file_name
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(file_path)
+    return {"detail": "Not Found"}
+
+# API Endpoint
 @app.post("/api/ask")
 async def ask(query: Query):
     poe_key = os.environ.get("POE_API_KEY", "").strip()
@@ -49,14 +71,14 @@ async def ask(query: Query):
         poe_client = AsyncOpenAI(
             api_key=poe_key,
             base_url="https://api.poe.com/v1",
-            timeout=6.0
+            timeout=8.0
         )
 
         response = await poe_client.chat.completions.create(
             model="mathchatbotyu",
             messages=cleaned_messages,
             temperature=0.3,
-            max_tokens=200
+            max_tokens=300
         )
 
         if response.choices:
@@ -82,7 +104,7 @@ async def ask(query: Query):
             if cantonese_voice:
                 payload["voice_id"] = cantonese_voice
 
-            async with httpx.AsyncClient(timeout=3.0) as client:
+            async with httpx.AsyncClient(timeout=4.0) as client:
                 res = await client.post(tts_url, json=payload, headers=headers)
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
