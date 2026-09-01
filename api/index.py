@@ -34,7 +34,6 @@ poe_client = AsyncOpenAI(
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
-# Serve index.html at root
 @app.get("/")
 async def serve_home():
     if os.path.exists("index.html"):
@@ -43,7 +42,6 @@ async def serve_home():
         return FileResponse("../index.html")
     return HTMLResponse("<h1>index.html not found</h1>", status_code=404)
 
-# Serve static files (avatar.png, background.png)
 @app.get("/{file_name}")
 async def serve_static(file_name: str):
     if os.path.exists(file_name):
@@ -52,7 +50,6 @@ async def serve_static(file_name: str):
         return FileResponse(f"../{file_name}")
     return {"detail": "Not Found"}
 
-# API Endpoint for Chatbot
 @app.post("/api/ask")
 async def ask(query: Query):
     if not POE_KEY:
@@ -67,7 +64,10 @@ async def ask(query: Query):
             temperature=0.3,
             max_tokens=250,
         )
+        
         reply_text = response.choices[0].message.content
+        if not reply_text:
+            reply_text = "余主任收不到訊息，請確認 Poe Bot 已設定為「公開 (Public)」。"
 
         if CANTONESE_AI_API_KEY:
             tts_url = "https://cantonese.ai/api/tts"
