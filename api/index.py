@@ -62,32 +62,40 @@ async def ask(query: Query):
             model="mathchatbotyu",
             messages=query.messages,
             temperature=0.3,
-            max_tokens=250,
+            max_tokens=1000,
         )
+
+        message = response.choices[0].message
         
-        reply_text = response.choices[0].message.content
+        # Check standard content or fallback reasoning content
+        reply_text = message.content or getattr(message, "reasoning_content", None) or ""
+        reply_text = reply_text.strip()
+
         if not reply_text:
-            reply_text = "余主任收不到訊息，請確認 Poe Bot 已設定為「公開 (Public)」。"
+            reply_text = "余主任已收到訊息。請檢查 Poe 帳戶點數餘額或 Bot 名稱（mathchatbotyu）。"
 
-        if CANTONESE_AI_API_KEY:
-            tts_url = "https://cantonese.ai/api/tts"
-            headers = {
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0",
-            }
-            payload = {
-                "api_key": CANTONESE_AI_API_KEY,
-                "text": reply_text,
-                "output_extension": "mp3",
-            }
-            if CANTONESE_AI_VOICE:
-                payload["voice_id"] = CANTONESE_AI_VOICE
+        if CANTONESE_AI_API_KEY and reply_text:
+            try:
+                tts_url = "https://cantonese.ai/api/tts"
+                headers = {
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0",
+                }
+                payload = {
+                    "api_key": CANTONESE_AI_API_KEY,
+                    "text": reply_text,
+                    "output_extension": "mp3",
+                }
+                if CANTONESE_AI_VOICE:
+                    payload["voice_id"] = CANTONESE_AI_VOICE
 
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                res = await client.post(tts_url, json=payload, headers=headers)
-                if res.status_code == 200:
-                    audio_b64 = base64.b64encode(res.content).decode("utf-8")
-                    audio_url = f"data:audio/mp3;base64,{audio_b64}"
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    res = await client.post(tts_url, json=payload, headers=headers)
+                    if res.status_code == 200:
+                        audio_b64 = base64.b64encode(res.content).decode("utf-8")
+                        audio_url = f"data:audio/mp3;base64,{audio_b64}"
+            except Exception as tts_err:
+                logger.error(f"[TTS Error]: {str(tts_err)}")
 
         return {"text": reply_text, "audio_url": audio_url}
 
