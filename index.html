@@ -174,7 +174,8 @@
     let chatHistory = [];
 
     async function sendQueryToBackend(studentQuery) {
-      if (!studentQuery.trim()) return;
+      const trimmedQuery = studentQuery.trim();
+      if (!trimmedQuery) return;
 
       statusEl.innerText = "余主任思考緊，準備回答你...";
 
@@ -183,10 +184,9 @@
         currentAudio = null;
       }
 
-      chatHistory.push({ role: "user", content: studentQuery });
+      chatHistory.push({ role: "user", content: trimmedQuery });
 
       try {
-        // Change '/api/ask' to your full Render domain URL if hosted separately from frontend
         const response = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -194,12 +194,16 @@
         });
 
         const data = await response.json();
-        const replyText = data.text || "";
+        const replyText = data.text || "余主任沒有回應。";
         statusEl.innerText = replyText;
 
-        chatHistory.push({ role: "assistant", content: replyText });
-
-        addQuestionToHistory(studentQuery, replyText);
+        // Only save valid response to context history
+        if (data.text && !data.text.includes("連線失敗")) {
+          chatHistory.push({ role: "assistant", content: replyText });
+          addQuestionToHistory(trimmedQuery, replyText);
+        } else {
+          chatHistory.pop(); // Remove failed question from conversation context
+        }
 
         if (data.audio_url) {
           currentAudio = new Audio(data.audio_url);
