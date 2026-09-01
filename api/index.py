@@ -33,6 +33,12 @@ async def ask(query: Query):
     if not poe_key:
         return {"text": "錯誤：未設定 POE_API_KEY 環境變數。", "audio_url": None}
 
+    # Add system prompt to force short Cantonese responses for fast TTS
+    system_instruction = {
+        "role": "system",
+        "content": "你係小學數學老師余主任。請用親切廣東話回答，每次回答請保持簡短（30字以內），方便學生理解。"
+    }
+
     cleaned_messages = [
         {"role": msg.get("role", "user"), "content": str(msg.get("content", "")).strip()}
         for msg in query.messages
@@ -42,6 +48,8 @@ async def ask(query: Query):
     if not cleaned_messages:
         return {"text": "請輸入提問內容。", "audio_url": None}
 
+    full_messages = [system_instruction] + cleaned_messages
+
     reply_text = ""
     audio_url = None
 
@@ -49,14 +57,14 @@ async def ask(query: Query):
         poe_client = AsyncOpenAI(
             api_key=poe_key,
             base_url="https://api.poe.com/v1",
-            timeout=8.0
+            timeout=5.0
         )
 
         response = await poe_client.chat.completions.create(
             model="mathchatbotyu",
-            messages=cleaned_messages,
+            messages=full_messages,
             temperature=0.3,
-            max_tokens=300
+            max_tokens=150
         )
 
         if response.choices:
@@ -70,21 +78,23 @@ async def ask(query: Query):
     if not reply_text:
         reply_text = "余主任暫時未有回應，請確認 Poe Bot 名稱及點數餘額。"
 
-    # 生成廣東話 TTS 語音
+    # TTS Generation: limit text length to ensure generation completes within 4 seconds
     if cantonese_key:
         try:
+            # Truncate text for TTS if it exceeds 60 characters to prevent Vercel timeout
+            tts_text = reply_text[:60] if len(reply_text) > 60 else reply_text
+
             tts_url = "https://cantonese.ai/api/tts"
             headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
             payload = {
                 "api_key": cantonese_key,
-                "text": reply_text,
+                "text": tts_text,
                 "output_extension": "mp3",
             }
             if cantonese_voice:
                 payload["voice_id"] = cantonese_voice
 
-            # 增加 Timeout 至 22.0 秒
-            async with httpx.AsyncClient(timeout=22.0) as client:
+            async with httpx.AsyncClient(timeout=4.0) as client:
                 res = await client.post(tts_url, json=payload, headers=headers)
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
@@ -93,7 +103,5 @@ async def ask(query: Query):
                     logger.error(f"[TTS Failed]: Status {res.status_code}, Response: {res.text}")
         except Exception as tts_err:
             logger.error(f"[TTS Exception]: {str(tts_err)}")
-    else:
-        logger.warning("[TTS Warning]: CANTONESE_AI_API_KEY 未找到，跳過語音生成。")
 
     return {"text": reply_text, "audio_url": audio_url}
