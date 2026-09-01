@@ -44,21 +44,20 @@ async def ask(query: Query):
 
     reply_text = ""
     audio_url = None
-    debug_error = None
 
-    # Step 1: Get answer from Poe Bot
+    # Step 1: Get text response from Poe Bot
     try:
         poe_client = AsyncOpenAI(
             api_key=poe_key,
             base_url="https://api.poe.com/v1",
-            timeout=6.0
+            timeout=4.5
         )
 
         response = await poe_client.chat.completions.create(
             model="mathchatbotyu",
             messages=cleaned_messages,
             temperature=0.3,
-            max_tokens=150
+            max_tokens=120
         )
 
         if response.choices:
@@ -72,39 +71,27 @@ async def ask(query: Query):
     if not reply_text:
         reply_text = "余主任暫時未有回應，請確認 Poe Bot 名稱及點數餘額。"
 
-    # Step 2: Convert response text to Cantonese Speech
+    # Step 2: Synthesize FULL text into Cantonese Audio
     if cantonese_key:
         try:
-            # Truncate to first 50 characters to keep audio synthesis under 3 seconds
-            tts_text = reply_text[:50] if len(reply_text) > 50 else reply_text
-
             tts_url = "https://cantonese.ai/api/tts"
             headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
             payload = {
                 "api_key": cantonese_key,
-                "text": tts_text,
+                "text": reply_text,  # Reads 100% of the generated text
                 "output_extension": "mp3",
             }
             if cantonese_voice:
                 payload["voice_id"] = cantonese_voice
 
-            # Increased timeout to 8.0 seconds
-            async with httpx.AsyncClient(timeout=8.0) as client:
+            async with httpx.AsyncClient(timeout=8.5) as client:
                 res = await client.post(tts_url, json=payload, headers=headers)
                 if res.status_code == 200:
                     audio_b64 = base64.b64encode(res.content).decode("utf-8")
                     audio_url = f"data:audio/mp3;base64,{audio_b64}"
                 else:
-                    debug_error = f"TTS HTTP {res.status_code}"
                     logger.error(f"[TTS Failed]: {res.status_code} - {res.text}")
         except Exception as tts_err:
-            debug_error = f"TTS Timeout/Error: {str(tts_err)}"
             logger.error(f"[TTS Exception]: {str(tts_err)}")
-    else:
-        debug_error = "CANTONESE_AI_API_KEY Missing"
-
-    # Display TTS error on UI if audio fails
-    if not audio_url and debug_error:
-        logger.warning(f"Audio not generated: {debug_error}")
 
     return {"text": reply_text, "audio_url": audio_url}
