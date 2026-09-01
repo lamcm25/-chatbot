@@ -1,274 +1,50 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>余主任小學數學教室</title>
-  <style>
-    body { 
-      background: url('background.png') no-repeat center center fixed; 
-      background-size: cover; 
-      color: white; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      padding: 20px; 
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .main-container {
-      display: flex;
-      gap: 20px;
-      width: 100%;
-      max-width: 900px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .card { 
-      background: rgba(30, 41, 59, 0.88); 
-      backdrop-filter: blur(12px);
-      padding: 24px; 
-      border-radius: 24px; 
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-sizing: border-box;
-    }
-    .left-panel {
-      flex: 1;
-      min-width: 320px;
-      max-width: 420px;
-      text-align: center;
-    }
-    .right-panel {
-      flex: 1;
-      min-width: 300px;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      max-height: 580px;
-    }
-    h2, h3 { margin-top: 0; color: #63b3ed; }
-    h2 { font-size: 20px; }
-    h3 { font-size: 17px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; margin-bottom: 12px; }
+async function sendQueryToBackend(studentQuery) {
+  const trimmedQuery = studentQuery.trim();
+  if (!trimmedQuery) return;
 
-    .avatar-container { 
-      width: 240px; 
-      height: 240px; 
-      margin: 10px auto; 
-      border-radius: 20px; 
-      overflow: hidden; 
-      border: 3px solid #63b3ed; 
-      background: #1a202c;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    img { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-    }
-    .btn { 
-      background: #38a169; 
-      color: white; 
-      padding: 12px 24px; 
-      border: none; 
-      border-radius: 30px; 
-      font-size: 16px; 
-      font-weight: bold;
-      cursor: pointer; 
-      margin: 12px 0; 
-      transition: background 0.2s;
-      width: 100%;
-    }
-    .btn:hover { background: #2f855a; }
-    .input-box { display: flex; gap: 8px; margin-top: 5px; }
-    input { 
-      flex: 1; 
-      padding: 12px; 
-      border-radius: 12px; 
-      border: 1px solid #4a5568; 
-      background: #1a202c;
-      color: white;
-      font-size: 15px;
-    }
-    button.send { 
-      background: #3182ce; 
-      color: white; 
-      border: none; 
-      padding: 12px 18px; 
-      border-radius: 12px; 
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #status { margin-top: 12px; font-size: 14px; color: #cbd5e0; min-height: 40px; line-height: 1.4; }
+  statusEl.innerText = "余主任思考緊，準備回答你...";
 
-    .history-list {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-right: 4px;
-    }
-    .history-item {
-      background: rgba(15, 23, 42, 0.6);
-      border-radius: 12px;
-      padding: 10px 14px;
-      border-left: 4px solid #63b3ed;
-      text-align: left;
-    }
-    .history-q {
-      font-weight: bold;
-      color: #90cdf4;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-    .history-a {
-      color: #e2e8f0;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-    .empty-history {
-      color: #a0aec0;
-      font-size: 13px;
-      text-align: center;
-      margin-top: 50px;
-    }
-  </style>
-</head>
-<body>
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
 
-  <div class="main-container">
-    <div class="card left-panel">
-      <h2>小學數學：余主任</h2>
-      
-      <div class="avatar-container">
-        <img id="avatar-img" src="avatar.png" alt="余主任">
-      </div>
+  chatHistory.push({ role: "user", content: trimmedQuery });
 
-      <button class="btn" onclick="recordAndAsk()">🎤 按此語音發問</button>
+  try {
+    const response = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory })
+    });
 
-      <div class="input-box">
-        <input type="text" id="text-input" placeholder="向余主任提問..." onkeypress="handleKeyPress(event)">
-        <button class="send" onclick="sendTextQuery()">傳送</button>
-      </div>
+    const data = await response.json();
 
-      <p id="status">你好呀！我係余主任，你叫咩名呀？</p>
-    </div>
-
-    <div class="card right-panel">
-      <h3>課堂探究紀錄</h3>
-      <div id="history-list" class="history-list">
-        <p class="empty-history" id="empty-msg">與余主任的對話紀錄會顯示在此處。</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const statusEl = document.getElementById('status');
-    const historyList = document.getElementById('history-list');
-    const emptyMsg = document.getElementById('empty-msg');
-    let currentAudio = null;
-    let chatHistory = [];
-
-    async function sendQueryToBackend(studentQuery) {
-      const trimmedQuery = studentQuery.trim();
-      if (!trimmedQuery) return;
-
-      statusEl.innerText = "余主任思考緊，準備回答你...";
-
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-      }
-
-      chatHistory.push({ role: "user", content: trimmedQuery });
-
-      try {
-        const response = await fetch('/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: chatHistory })
-        });
-
-        const data = await response.json();
-        const replyText = data.text || "余主任沒有回應。";
-        statusEl.innerText = replyText;
-
-        // Only save valid response to context history
-        if (data.text && !data.text.includes("連線失敗")) {
-          chatHistory.push({ role: "assistant", content: replyText });
-          addQuestionToHistory(trimmedQuery, replyText);
-        } else {
-          chatHistory.pop(); // Remove failed question from conversation context
-        }
-
-        if (data.audio_url) {
-          currentAudio = new Audio(data.audio_url);
-          currentAudio.play().catch(e => {
-            console.log("Autoplay blocked:", e);
-            statusEl.innerText = replyText + "\n(🔊 請點擊畫面收聽余主任聲音)";
-            document.body.onclick = () => {
-              if (currentAudio) currentAudio.play();
-              document.body.onclick = null;
-            };
-          });
-        }
-      } catch (error) {
-        console.error("Fetch error:", error);
-        statusEl.innerText = "連線失敗，請稍後再試。";
-        chatHistory.pop();
-      }
+    if (!response.ok) {
+      statusEl.innerText = `伺服器錯誤 (${response.status}): ${data.detail || data.error || '未知錯誤'}`;
+      chatHistory.pop();
+      return;
     }
 
-    function addQuestionToHistory(question, answer) {
-      if (emptyMsg) emptyMsg.style.display = 'none';
+    const replyText = data.text || "余主任沒有回應。";
+    statusEl.innerText = replyText;
 
-      const item = document.createElement('div');
-      item.className = 'history-item';
-
-      const qEl = document.createElement('div');
-      qEl.className = 'history-q';
-      qEl.innerText = "🧑‍🎓 你：" + question;
-
-      const aEl = document.createElement('div');
-      aEl.className = 'history-a';
-      aEl.innerText = "👨‍🏫 余主任：" + answer;
-
-      item.appendChild(qEl);
-      item.appendChild(aEl);
-
-      historyList.prepend(item);
+    if (data.text && !data.text.includes("連線失敗")) {
+      chatHistory.push({ role: "assistant", content: replyText });
+      addQuestionToHistory(trimmedQuery, replyText);
+    } else {
+      chatHistory.pop();
     }
 
-    function recordAndAsk() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("你的瀏覽器不支援語音輸入，請直接打字。");
-        return;
-      }
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'zh-HK';
-      recognition.start();
-
-      statusEl.innerText = "正在聆聽你的問題...";
-
-      recognition.onresult = (event) => {
-        sendQueryToBackend(event.results[0][0].transcript);
-      };
+    if (data.audio_url) {
+      currentAudio = new Audio(data.audio_url);
+      currentAudio.play().catch(e => {
+        console.log("Autoplay blocked:", e);
+      });
     }
-
-    function sendTextQuery() {
-      const inputField = document.getElementById('text-input');
-      sendQueryToBackend(inputField.value);
-      inputField.value = '';
-    }
-
-    function handleKeyPress(event) {
-      if (event.key === 'Enter') sendTextQuery();
-    }
-  </script>
-</body>
-</html>
+  } catch (error) {
+    console.error("Fetch error:", error);
+    statusEl.innerText = "網絡請求失敗：" + error.message;
+    chatHistory.pop();
+  }
+}
