@@ -29,12 +29,10 @@ class TTSRequest(BaseModel):
     text: str
 
 def prepare_tts_text(text: str) -> str:
-    """Cleans LaTeX/math formatting and safely truncates text to ensure fast TTS generation."""
-    # 1. Remove LaTeX brackets, slashes, and math symbols
+    """清理 LaTeX/數學符號並適當截斷，確保 TTS 生成速度"""
     cleaned = re.sub(r'\\[\(\)\[\]]', '', text)
     cleaned = re.sub(r'[\$\\]', '', cleaned)
     
-    # 2. Convert digits to Cantonese characters
     num_map = {
         '90': '九十', '180': '一百八十', '360': '三百六十',
         '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
@@ -43,7 +41,6 @@ def prepare_tts_text(text: str) -> str:
     for k, v in num_map.items():
         cleaned = cleaned.replace(k, v)
 
-    # 3. Truncate TTS speech to first sentence / max 45 characters so sound loads under 3s
     if len(cleaned) > 45:
         match = re.search(r'^.{15,45}[！!。？?]', cleaned)
         if match:
@@ -86,11 +83,12 @@ async def chat(query: Query):
         poe_client = AsyncOpenAI(
             api_key=poe_key,
             base_url="https://api.poe.com/v1",
-            timeout=6.0
+            timeout=8.0
         )
 
+        # 此處模型名稱需與 Poe Bot Handle 完全一致
         response = await poe_client.chat.completions.create(
-            model="mathchatbotyu",
+            model="masterYuBotnew2",
             messages=formatted_messages,
             temperature=0.3,
             max_tokens=85
