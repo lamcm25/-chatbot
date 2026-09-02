@@ -11,7 +11,7 @@
       padding: 0;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       background: #1e222b url('background.png') no-repeat center center fixed;
       background-size: cover;
       color: #ffffff;
@@ -21,27 +21,77 @@
       min-height: 100vh;
       padding: 20px;
     }
+    
+    /* 放大整體容器尺寸 (適合 iPad & 桌面) */
     .app-container {
       display: flex;
-      gap: 20px;
+      gap: 24px;
       width: 100%;
-      max-width: 960px;
-      height: 540px;
+      max-width: 1100px;
+      height: 660px;
+      position: relative;
     }
+    
+    /* iPad 點擊解鎖遮罩 */
+    .start-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(26, 30, 38, 0.96);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      gap: 24px;
+      text-align: center;
+      padding: 20px;
+    }
+    .start-overlay h2 {
+      font-size: 26px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    .btn-start {
+      padding: 18px 40px;
+      font-size: 22px;
+      font-weight: bold;
+      background-color: #34a853;
+      color: white;
+      border: none;
+      border-radius: 36px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(52, 168, 83, 0.4);
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    .btn-start:hover {
+      background-color: #2d9247;
+    }
+    .btn-start:active {
+      transform: scale(0.96);
+    }
+
+    /* 左右面板放大 */
     .left-panel, .right-panel {
-      background-color: rgba(43, 49, 62, 0.92);
-      border-radius: 12px;
-      padding: 24px;
+      background-color: rgba(43, 49, 62, 0.94);
+      border-radius: 16px;
+      padding: 28px;
       display: flex;
       flex-direction: column;
       flex: 1;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
+    
     .panel-title {
-      font-size: 18px;
+      font-size: 22px;
       font-weight: bold;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
+      color: #ffffff;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 8px;
     }
+    
     .avatar-container {
       flex: 1;
       display: flex;
@@ -50,8 +100,8 @@
       background-color: #1a1e26;
       border-radius: 12px;
       overflow: hidden;
-      margin-bottom: 16px;
-      padding: 10px;
+      margin-bottom: 18px;
+      padding: 12px;
     }
     .avatar-container img {
       width: 100%;
@@ -59,72 +109,86 @@
       object-fit: contain;
       object-position: top center;
     }
+    
     .btn-voice {
       width: 100%;
-      padding: 12px;
+      padding: 15px;
       background-color: #34a853;
       color: #ffffff;
       border: none;
-      border-radius: 24px;
-      font-size: 16px;
+      border-radius: 28px;
+      font-size: 18px;
       font-weight: bold;
       cursor: pointer;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      transition: background-color 0.2s, transform 0.1s;
     }
-    .btn-voice:hover {
-      background-color: #2d9247;
+    .btn-voice:active {
+      transform: scale(0.98);
     }
+    
     .input-row {
       display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
+      gap: 12px;
+      margin-bottom: 14px;
     }
     .input-row input {
       flex: 1;
-      padding: 10px 14px;
+      padding: 12px 16px;
       background-color: #1e222b;
       border: 1px solid #3c4250;
-      border-radius: 8px;
+      border-radius: 10px;
       color: #ffffff;
-      font-size: 14px;
+      font-size: 16px;
+    }
+    .input-row input:focus {
+      outline: none;
+      border-color: #4285f4;
     }
     .input-row button {
-      padding: 10px 20px;
+      padding: 12px 24px;
       background-color: #4285f4;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .input-row button:hover {
+      background-color: #3367d6;
     }
     .input-row button:disabled {
-      background-color: #555;
+      background-color: #555555;
       cursor: not-allowed;
     }
+    
     .status-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      min-height: 40px;
-    }
-    .status-box {
-      font-size: 14px;
-      color: #e0e4ec;
-      line-height: 1.4;
+      gap: 8px;
+      min-height: 50px;
     }
     
-    /* Animated Voice Badge */
+    /* 狀態與字體加大 */
+    .status-box {
+      font-size: 16px;
+      color: #e0e4ec;
+      line-height: 1.5;
+    }
+    
     .audio-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       align-self: flex-start;
-      font-size: 12px;
+      font-size: 14px;
       background: rgba(66, 133, 244, 0.2);
       color: #8ab4f8;
       border: 1px solid rgba(66, 133, 244, 0.4);
-      padding: 4px 10px;
-      border-radius: 12px;
+      padding: 6px 14px;
+      border-radius: 16px;
       animation: pulse 1.5s infinite ease-in-out;
     }
     
@@ -134,33 +198,47 @@
       100% { opacity: 0.6; }
     }
 
+    /* 對話紀錄歷史框（字體加大至 16px，行距放寬） */
     .history-box {
       flex: 1;
       background-color: #1a1e26;
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 12px;
+      padding: 20px;
       overflow-y: auto;
-      font-size: 14px;
-      color: #a0a6b5;
-      line-height: 1.6;
+      font-size: 16px;
+      color: #d1d5db;
+      line-height: 1.7;
     }
     .chat-item {
-      margin-bottom: 12px;
-      padding-bottom: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
       border-bottom: 1px solid #2b313e;
       color: #ffffff;
+      word-break: break-word;
+    }
+    .chat-item strong {
+      color: #8ab4f8;
     }
   </style>
 </head>
 <body>
 
   <div class="app-container">
+    <!-- iPad / Safari 首頁點擊解鎖音訊遮罩 -->
+    <div id="start-overlay" class="start-overlay">
+      <h2>歡迎嚟到余主任嘅數學課堂！</h2>
+      <button class="btn-start" onclick="startApp()">🎓 開始課堂</button>
+    </div>
+
+    <!-- 左邊面板：頭像、輸入與語音按鈕 -->
     <div class="left-panel">
       <div class="panel-title">小學數學：余主任</div>
       <div class="avatar-container">
         <img src="avatar.png" alt="余主任">
       </div>
+      
       <button class="btn-voice" onclick="startVoiceInput()">🎤 按此語音發問</button>
+      
       <div class="input-row">
         <input type="text" id="text-input" placeholder="向余主任提問..." onkeydown="if(event.key==='Enter') handleSend()">
         <button class="send" onclick="handleSend()">傳送</button>
@@ -172,6 +250,7 @@
       </div>
     </div>
 
+    <!-- 右邊面板：對話紀錄 -->
     <div class="right-panel">
       <div class="panel-title">課堂探究紀錄</div>
       <div id="chat-history" class="history-box">與余主任的對話紀錄會顯示在此處。</div>
@@ -180,9 +259,34 @@
 
   <script>
     let chatHistory = [];
-    let currentAudio = null;
+    let currentAudio = new Audio(); // 全局 Audio 物件，維護 iOS 播放權限
+    let recognition = null;
+    let isRecording = false;
+    let silenceTimer = null;
+
     const statusEl = document.getElementById('status');
     const badgeContainer = document.getElementById('audio-badge-container');
+
+    // 1. 學生按下「開始課堂」：解鎖 iPad 音訊並播放 welcome.mp3
+    function startApp() {
+      document.getElementById('start-overlay').style.display = 'none';
+
+      const welcomeText = "你好呀！我係余主任。請問你叫咩名呀？";
+      statusEl.innerText = welcomeText;
+      showAudioBadge("播放語音中");
+
+      currentAudio.src = 'welcome.mp3'; // GitHub 根目錄的 welcome.mp3
+      currentAudio.play().then(() => {
+        chatHistory.push({ role: "assistant", content: welcomeText });
+      }).catch(e => {
+        console.warn("Autoplay blocked or welcome.mp3 missing:", e);
+        clearAudioBadge();
+      });
+
+      currentAudio.onended = () => {
+        clearAudioBadge();
+      };
+    }
 
     function showAudioBadge(text) {
       badgeContainer.innerHTML = `<span class="audio-badge">🔊 ${text}</span>`;
@@ -192,6 +296,7 @@
       badgeContainer.innerHTML = '';
     }
 
+    // 2. 手動或自動傳送功能
     function handleSend() {
       const input = document.getElementById('text-input');
       const text = input.value.trim();
@@ -213,6 +318,7 @@
       historyBox.scrollTop = historyBox.scrollHeight;
     }
 
+    // 3. 後端 API 溝通與同頻呈現（文字 + 語音）
     async function sendQueryToBackend(studentQuery) {
       const trimmedQuery = studentQuery.trim();
       if (!trimmedQuery) return;
@@ -226,15 +332,12 @@
       statusEl.innerText = "余主任思考緊，準備回答你...";
       clearAudioBadge();
 
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-      }
+      currentAudio.pause(); // 預先暫停舊語音
 
       chatHistory.push({ role: "user", content: trimmedQuery });
 
       try {
-        // Step 1: Fetch text answer (Held in memory, not shown yet)
+        // Step 1: 取得文字回應
         const chatRes = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -257,7 +360,7 @@
           return;
         }
 
-        // Step 2: Fetch audio while displaying "Generating voice..." status
+        // Step 2: 取得廣東話 TTS 語音
         statusEl.innerText = "余主任準備緊回答同語音...";
         showAudioBadge("廣東話語音生成中...");
 
@@ -269,11 +372,11 @@
 
         const ttsData = await ttsRes.json();
 
-        // Step 3: Synchronized Reveal — Play sound and render text at the EXACT same instant
+        // Step 3: 文字與語音同步呈現
         chatHistory.push({ role: "assistant", content: replyText });
 
         if (ttsData.audio_url) {
-          currentAudio = new Audio(ttsData.audio_url);
+          currentAudio.src = ttsData.audio_url;
           
           currentAudio.onplay = () => {
             statusEl.innerText = replyText;
@@ -286,13 +389,12 @@
           };
 
           currentAudio.play().catch(e => {
-            console.warn("Autoplay blocked:", e);
+            console.warn("iOS Autoplay blocked:", e);
             statusEl.innerText = replyText;
             addQuestionToHistory(trimmedQuery, replyText);
             clearAudioBadge();
           });
         } else {
-          // If speech synthesis fails, reveal text immediately
           statusEl.innerText = replyText;
           addQuestionToHistory(trimmedQuery, replyText);
           clearAudioBadge();
@@ -312,26 +414,87 @@
       }
     }
 
+    // 4. 即時語音辨識（包含即時字幕、1.8s 自動傳送、按鍵開關控制）
     function startVoiceInput() {
+      const btn = document.querySelector('.btn-voice');
+      const input = document.getElementById('text-input');
+
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert('你的瀏覽器不支援語音辨識功能。');
         return;
       }
+
+      // 正在錄音中 -> 再點擊一次即為「手動完成並傳送」
+      if (isRecording) {
+        if (silenceTimer) clearTimeout(silenceTimer);
+        if (recognition) recognition.stop();
+        return;
+      }
+
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
+      recognition = new SpeechRecognition();
       recognition.lang = 'zh-HK';
-      statusEl.innerText = "正在聆聽...";
-      recognition.start();
+      recognition.continuous = true;
+      recognition.interimResults = true; // 開啟即時字幕顯示
+
+      isRecording = true;
+      btn.innerText = "🔴 錄音中... (點擊完成發問)";
+      btn.style.backgroundColor = "#e53935"; // 變為紅色
+      statusEl.innerText = "正在聆聽中，請說出你的問題...";
+      input.value = "";
+
+      let finalTranscript = "";
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById('text-input').value = transcript;
-        handleSend();
+        let interimTranscript = "";
+
+        if (silenceTimer) clearTimeout(silenceTimer);
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = finalTranscript || interimTranscript;
+        input.value = currentText;
+        statusEl.innerText = "聽緊你講： " + currentText;
+
+        // 停頓 1.8 秒無聲，自動完成並發送
+        silenceTimer = setTimeout(() => {
+          if (recognition && isRecording) {
+            recognition.stop();
+          }
+        }, 1800);
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
         statusEl.innerText = "語音辨識失敗，請重試。";
+        resetVoiceButton();
       };
+
+      recognition.onend = () => {
+        resetVoiceButton();
+        const textToSend = input.value.trim();
+        if (textToSend) {
+          handleSend(); // 自動發送
+        }
+      };
+
+      recognition.start();
+    }
+
+    function resetVoiceButton() {
+      isRecording = false;
+      if (silenceTimer) clearTimeout(silenceTimer);
+      const btn = document.querySelector('.btn-voice');
+      if (btn) {
+        btn.innerText = "🎤 按此語音發問";
+        btn.style.backgroundColor = "#34a853";
+      }
     }
   </script>
 </body>
