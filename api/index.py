@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import os
 import re
@@ -22,11 +23,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 你的 Google Apps Script Webhook 網址
+WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxI-n1nmYW43zAo-fShO7jCx1azXbL0EUo4W3HHibYU5epakHByMGjinEvG95jOX_da0w/exec"
+
 class Query(BaseModel):
     messages: List[Dict[str, str]]
 
 class TTSRequest(BaseModel):
     text: str
+
+async def send_log_to_google_sheet(user_id: str, user_msg: str, bot_msg: str):
+    """背景非同步發送對話紀錄至 Google Apps Script"""
+    if not WEBHOOK_URL:
+        return
+    try:
+        payload = {
+            "user_id": user_id,
+            "user_msg": user_msg,
+            "bot_msg": bot_msg
+        }
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(WEBHOOK_URL, json=payload)
+    except Exception as e:
+        logger.error(f"[Google Sheet Log Error]: {str(e)}")
 
 def prepare_tts_text(text: str) -> str:
     """清理 LaTeX/數學符號並適當截斷，確保 TTS 生成速度"""
@@ -86,7 +105,6 @@ async def chat(query: Query):
             timeout=8.0
         )
 
-        # 此處模型名稱需與 Poe Bot Handle 完全一致
         response = await poe_client.chat.completions.create(
             model="masterYuBotnew2",
             messages=formatted_messages,
@@ -101,6 +119,10 @@ async def chat(query: Query):
 
         if not reply_text:
             reply_text = "余主任暫時未有回應，請確認 Poe Bot 名稱及點數餘額。"
+
+        # 成功取得回應後，於背景將對話紀錄傳送至 Google Sheet
+        user_last_msg = cleaned_messages[-1]["content"] if cleaned_messages else ""
+        asyncio.create_task(send_log_to_google_sheet("Web_User", user_last_msg, reply_text))
 
         return {"text": reply_text}
 
