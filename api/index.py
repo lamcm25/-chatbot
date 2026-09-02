@@ -48,10 +48,12 @@ async def send_log_to_google_sheet(user_id: str, user_msg: str, bot_msg: str):
         logger.error(f"[Google Sheet Log Error]: {str(e)}")
 
 def prepare_tts_text(text: str) -> str:
-    """清理 LaTeX/數學符號並適當截斷，確保 TTS 生成速度"""
+    """清理 LaTeX/數學符號並保留完整內容供 TTS 朗讀（移除長度限制截斷）"""
+    # 1. 移除 LaTeX 括號與斜線等符號
     cleaned = re.sub(r'\\[\(\)\[\]]', '', text)
     cleaned = re.sub(r'[\$\\]', '', cleaned)
     
+    # 2. 數字轉廣東話漢字
     num_map = {
         '90': '九十', '180': '一百八十', '360': '三百六十',
         '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
@@ -60,13 +62,7 @@ def prepare_tts_text(text: str) -> str:
     for k, v in num_map.items():
         cleaned = cleaned.replace(k, v)
 
-    if len(cleaned) > 45:
-        match = re.search(r'^.{15,45}[！!。？?]', cleaned)
-        if match:
-            cleaned = match.group(0)
-        else:
-            cleaned = cleaned[:45]
-
+    # 3. 回傳完整清理後的文字，確保結尾句子能被完整朗讀
     return cleaned.strip()
 
 
