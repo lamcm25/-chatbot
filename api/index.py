@@ -48,12 +48,15 @@ async def send_log_to_google_sheet(user_id: str, user_msg: str, bot_msg: str):
         logger.error(f"[Google Sheet Log Error]: {str(e)}")
 
 def prepare_tts_text(text: str) -> str:
-    """清理 LaTeX/數學符號並保留完整內容供 TTS 朗讀（移除長度限制截斷）"""
-    # 1. 移除 LaTeX 括號與斜線等符號
+    """清理 LaTeX、引號與特殊符號，確保 TTS 生成穩定"""
+    # 1. 移除 LaTeX 符號
     cleaned = re.sub(r'\\[\(\)\[\]]', '', text)
     cleaned = re.sub(r'[\$\\]', '', cleaned)
     
-    # 2. 數字轉廣東話漢字
+    # 2. 移除中英文引號（「」『』“”"''），防止 Cantonese.ai API 解析失誤
+    cleaned = re.sub(r'[「」『』“”"\'`]', '', cleaned)
+    
+    # 3. 數字轉廣東話漢字
     num_map = {
         '90': '九十', '180': '一百八十', '360': '三百六十',
         '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
@@ -62,7 +65,6 @@ def prepare_tts_text(text: str) -> str:
     for k, v in num_map.items():
         cleaned = cleaned.replace(k, v)
 
-    # 3. 回傳完整清理後的文字，確保結尾句子能被完整朗讀
     return cleaned.strip()
 
 
@@ -116,7 +118,6 @@ async def chat(query: Query):
         if not reply_text:
             reply_text = "余主任暫時未有回應，請確認 Poe Bot 名稱及點數餘額。"
 
-        # 成功取得回應後，於背景將對話紀錄傳送至 Google Sheet
         user_last_msg = cleaned_messages[-1]["content"] if cleaned_messages else ""
         asyncio.create_task(send_log_to_google_sheet("Web_User", user_last_msg, reply_text))
 
@@ -148,7 +149,8 @@ async def generate_tts(req: TTSRequest):
         if cantonese_voice:
             payload["voice_id"] = cantonese_voice
 
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        # 延長超時至 15.0 秒，確保長句有足夠時間生成語音
+        async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(tts_url, json=payload, headers=headers)
             if res.status_code == 200:
                 audio_b64 = base64.b64encode(res.content).decode("utf-8")
