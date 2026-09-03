@@ -22,7 +22,6 @@
       padding: 20px;
     }
     
-    /* 放大整體容器尺寸 (適合 iPad & 桌面) */
     .app-container {
       display: flex;
       gap: 24px;
@@ -32,7 +31,6 @@
       position: relative;
     }
     
-    /* iPad 點擊解鎖遮罩 */
     .start-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -71,7 +69,6 @@
       transform: scale(0.96);
     }
 
-    /* 左右面板放大 */
     .left-panel, .right-panel {
       background-color: rgba(43, 49, 62, 0.94);
       border-radius: 16px;
@@ -107,7 +104,7 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      object-position: top center;
+      object-position: center;
     }
     
     .btn-voice {
@@ -171,7 +168,6 @@
       min-height: 50px;
     }
     
-    /* 狀態與字體加大 */
     .status-box {
       font-size: 16px;
       color: #e0e4ec;
@@ -198,7 +194,6 @@
       100% { opacity: 0.6; }
     }
 
-    /* 對話紀錄歷史框（字體加大至 16px，行距放寬） */
     .history-box {
       flex: 1;
       background-color: #1a1e26;
@@ -224,17 +219,15 @@
 <body>
 
   <div class="app-container">
-    <!-- iPad / Safari 首頁點擊解鎖音訊遮罩 -->
     <div id="start-overlay" class="start-overlay">
       <h2>歡迎嚟到余主任嘅數學課堂！</h2>
       <button class="btn-start" onclick="startApp()">🎓 開始課堂</button>
     </div>
 
-    <!-- 左邊面板：頭像、輸入與語音按鈕 -->
     <div class="left-panel">
       <div class="panel-title">小學數學：余主任</div>
       <div class="avatar-container">
-        <img src="avatar.png" alt="余主任">
+        <img id="avatar-img" src="avatar_close.jpg" alt="余主任">
       </div>
       
       <button class="btn-voice" onclick="startVoiceInput()">🎤 按此語音發問</button>
@@ -250,7 +243,6 @@
       </div>
     </div>
 
-    <!-- 右邊面板：對話紀錄 -->
     <div class="right-panel">
       <div class="panel-title">課堂探究紀錄</div>
       <div id="chat-history" class="history-box">與余主任的對話紀錄會顯示在此處。</div>
@@ -259,15 +251,85 @@
 
   <script>
     let chatHistory = [];
-    let currentAudio = new Audio(); // 全局 Audio 物件，維護 iOS 播放權限
+    let currentAudio = new Audio();
     let recognition = null;
     let isRecording = false;
     let silenceTimer = null;
 
+    // Web Audio API lip-sync variables
+    let audioCtx = null;
+    let analyser = null;
+    let source = null;
+    let isAudioSetup = false;
+    let lipSyncAnimationFrame = null;
+
     const statusEl = document.getElementById('status');
     const badgeContainer = document.getElementById('audio-badge-container');
 
-    // 1. 學生按下「開始課堂」：解鎖 iPad 音訊並播放 welcome.mp3
+    function setupAudioAnalyser() {
+      if (isAudioSetup) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+
+        source = audioCtx.createMediaElementSource(currentAudio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
+        isAudioSetup = true;
+      } catch (e) {
+        console.warn("Web Audio API setup error:", e);
+      }
+    }
+
+    function startLipSync() {
+      setupAudioAnalyser();
+
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const img = document.getElementById('avatar-img');
+      if (!analyser) return;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      function updateMouth() {
+        if (currentAudio.paused || currentAudio.ended) {
+          resetAvatarImage();
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / dataArray.length;
+
+        if (img) {
+          if (average > 12) {
+            img.src = 'avatar_open.jpg';
+          } else {
+            img.src = 'avatar_close.jpg';
+          }
+        }
+
+        lipSyncAnimationFrame = requestAnimationFrame(updateMouth);
+      }
+
+      if (lipSyncAnimationFrame) cancelAnimationFrame(lipSyncAnimationFrame);
+      updateMouth();
+    }
+
+    function resetAvatarImage() {
+      const img = document.getElementById('avatar-img');
+      if (img) img.src = 'avatar_close.jpg';
+      if (lipSyncAnimationFrame) cancelAnimationFrame(lipSyncAnimationFrame);
+    }
+
     function startApp() {
       document.getElementById('start-overlay').style.display = 'none';
 
@@ -275,17 +337,29 @@
       statusEl.innerText = welcomeText;
       showAudioBadge("播放語音中");
 
-      currentAudio.src = 'welcome.mp3'; // GitHub 根目錄的 welcome.mp3
+      currentAudio.src = 'welcome.mp3';
+
+      currentAudio.onplay = () => {
+        startLipSync();
+      };
+
+      currentAudio.onended = () => {
+        clearAudioBadge();
+        resetAvatarImage();
+      };
+
+      currentAudio.onerror = () => {
+        clearAudioBadge();
+        resetAvatarImage();
+      };
+
       currentAudio.play().then(() => {
         chatHistory.push({ role: "assistant", content: welcomeText });
       }).catch(e => {
         console.warn("Autoplay blocked or welcome.mp3 missing:", e);
         clearAudioBadge();
+        resetAvatarImage();
       });
-
-      currentAudio.onended = () => {
-        clearAudioBadge();
-      };
     }
 
     function showAudioBadge(text) {
@@ -296,7 +370,6 @@
       badgeContainer.innerHTML = '';
     }
 
-    // 2. 手動或自動傳送功能
     function handleSend() {
       const input = document.getElementById('text-input');
       const text = input.value.trim();
@@ -318,7 +391,6 @@
       historyBox.scrollTop = historyBox.scrollHeight;
     }
 
-    // 3. 後端 API 溝通與同頻呈現（文字 + 語音）
     async function sendQueryToBackend(studentQuery) {
       const trimmedQuery = studentQuery.trim();
       if (!trimmedQuery) return;
@@ -332,12 +404,12 @@
       statusEl.innerText = "余主任思考緊，準備回答你...";
       clearAudioBadge();
 
-      currentAudio.pause(); // 預先暫停舊語音
+      currentAudio.pause();
+      resetAvatarImage();
 
       chatHistory.push({ role: "user", content: trimmedQuery });
 
       try {
-        // Step 1: 取得文字回應
         const chatRes = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -360,7 +432,6 @@
           return;
         }
 
-        // Step 2: 取得廣東話 TTS 語音
         statusEl.innerText = "余主任準備緊回答同語音...";
         showAudioBadge("廣東話語音生成中...");
 
@@ -372,7 +443,6 @@
 
         const ttsData = await ttsRes.json();
 
-        // Step 3: 文字與語音同步呈現
         chatHistory.push({ role: "assistant", content: replyText });
 
         if (ttsData.audio_url) {
@@ -382,10 +452,17 @@
             statusEl.innerText = replyText;
             addQuestionToHistory(trimmedQuery, replyText);
             showAudioBadge("播放語音中");
+            startLipSync();
           };
 
           currentAudio.onended = () => {
             clearAudioBadge();
+            resetAvatarImage();
+          };
+
+          currentAudio.onerror = () => {
+            clearAudioBadge();
+            resetAvatarImage();
           };
 
           currentAudio.play().catch(e => {
@@ -393,17 +470,20 @@
             statusEl.innerText = replyText;
             addQuestionToHistory(trimmedQuery, replyText);
             clearAudioBadge();
+            resetAvatarImage();
           });
         } else {
           statusEl.innerText = replyText;
           addQuestionToHistory(trimmedQuery, replyText);
           clearAudioBadge();
+          resetAvatarImage();
         }
 
       } catch (error) {
         console.error("Fetch error:", error);
         statusEl.innerText = "網絡請求失敗：" + error.message;
         clearAudioBadge();
+        resetAvatarImage();
         chatHistory.pop();
       } finally {
         if (sendBtn) sendBtn.disabled = false;
@@ -414,7 +494,6 @@
       }
     }
 
-    // 4. 即時語音辨識（包含即時字幕、1.8s 自動傳送、按鍵開關控制）
     function startVoiceInput() {
       const btn = document.querySelector('.btn-voice');
       const input = document.getElementById('text-input');
@@ -424,7 +503,6 @@
         return;
       }
 
-      // 正在錄音中 -> 再點擊一次即為「手動完成並傳送」
       if (isRecording) {
         if (silenceTimer) clearTimeout(silenceTimer);
         if (recognition) recognition.stop();
@@ -435,11 +513,11 @@
       recognition = new SpeechRecognition();
       recognition.lang = 'zh-HK';
       recognition.continuous = true;
-      recognition.interimResults = true; // 開啟即時字幕顯示
+      recognition.interimResults = true;
 
       isRecording = true;
       btn.innerText = "🔴 錄音中... (點擊完成發問)";
-      btn.style.backgroundColor = "#e53935"; // 變為紅色
+      btn.style.backgroundColor = "#e53935";
       statusEl.innerText = "正在聆聽中，請說出你的問題...";
       input.value = "";
 
@@ -462,7 +540,6 @@
         input.value = currentText;
         statusEl.innerText = "聽緊你講： " + currentText;
 
-        // 停頓 1.8 秒無聲，自動完成並發送
         silenceTimer = setTimeout(() => {
           if (recognition && isRecording) {
             recognition.stop();
@@ -480,7 +557,7 @@
         resetVoiceButton();
         const textToSend = input.value.trim();
         if (textToSend) {
-          handleSend(); // 自動發送
+          handleSend();
         }
       };
 
