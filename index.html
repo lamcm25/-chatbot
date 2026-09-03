@@ -227,7 +227,7 @@
     <div class="left-panel">
       <div class="panel-title">小學數學：余主任</div>
       <div class="avatar-container">
-        <img id="avatar-img" src="avatar_close.jpg" alt="余主任">
+        <img id="avatar-img" src="avatar_close.png" alt="余主任">
       </div>
       
       <button class="btn-voice" onclick="startVoiceInput()">🎤 按此語音發問</button>
@@ -311,9 +311,9 @@
 
         if (img) {
           if (average > 12) {
-            img.src = 'avatar_open.jpg';
+            img.src = 'avatar_open.png';
           } else {
-            img.src = 'avatar_close.jpg';
+            img.src = 'avatar_close.png';
           }
         }
 
@@ -326,7 +326,7 @@
 
     function resetAvatarImage() {
       const img = document.getElementById('avatar-img');
-      if (img) img.src = 'avatar_close.jpg';
+      if (img) img.src = 'avatar_close.png';
       if (lipSyncAnimationFrame) cancelAnimationFrame(lipSyncAnimationFrame);
     }
 
